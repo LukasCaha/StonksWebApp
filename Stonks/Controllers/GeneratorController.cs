@@ -23,6 +23,17 @@ namespace Stonks.Controllers
 
         static List<Stock> LastIteration { get; set; }
         static int numberOfIteretions { get; set; }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task AddValueAndTimestampToDatabase(List<StockValueInTime> lastIteration)
+        {
+            foreach(StockValueInTime changedStock in lastIteration)
+            {
+                changedStock.timestamp = 1; //TODO pocitadlo tahu
+                _context.Add(changedStock);
+                await _context.SaveChangesAsync();
+            }
+        }
 
 
 
@@ -70,7 +81,7 @@ namespace Stonks.Controllers
                     {
                         var tmp = curr;
                         curr = last[++i];
-                        if (tmp.id > curr.id) 
+                        if (tmp.id > curr.id)
                             throw new Exception("stock-list is not ordered!");
                     }
                     else break;
