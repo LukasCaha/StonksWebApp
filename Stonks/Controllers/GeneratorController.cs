@@ -23,16 +23,16 @@ namespace Stonks.Controllers
 
         static List<Stock> LastIteration { get; set; }
         static int numberOfIteretions { get; set; }
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task AddValueAndTimestampToDatabase(List<StockValueInTime> lastIteration)
+
+
+        async Task AddValueAndTimestampToDatabase(List<StockValueInTime> timed)
         {
-            foreach(StockValueInTime changedStock in lastIteration)
+            foreach(StockValueInTime changedStock in timed)
             {
                 changedStock.timestamp = 1; //TODO pocitadlo tahu
                 _context.Add(changedStock);
-                await _context.SaveChangesAsync();
             }
+            await _context.SaveChangesAsync();
         }
 
 
