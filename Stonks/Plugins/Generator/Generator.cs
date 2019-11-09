@@ -27,15 +27,15 @@ namespace Stonks.Plugins.Generator
         /// <param name="stock"></param>
         /// <param name="growthModifier">force-adjusts growthRate for all the iterations;  -1: rapid fall, 0: stagnation, 1: rapid growth </param>
         /// <returns></returns>
-        public static StockValueInTime RandomlyModify(StockValueInTime stock, double growthModifier = 0.0)
+        public static Stock RandomlyModify(Stock stock, double growthModifier = 0.0)
         {
             var GrowthTrend = 1.0; //stock.GrowthTrend;
-            var Value = stock.value;
+            var Value = stock.currentValue;
 
-            GrowthTrend = Math.Tanh(GrowthTrend + (RandGaussian() + growthModifier / 1000) * GrowthChangeRate);
+            GrowthTrend = Math.Tanh(GrowthTrend + (RandGaussian() + growthModifier) * GrowthChangeRate);
             Value *= 1 + (decimal)(RandGaussian() + GrowthTrend) * ValueChangeRate;
 
-            stock.value = Value;
+            stock.currentValue = Value;
             //stock.GrowthTrend = GrowthTrend;
             return stock;
         }
