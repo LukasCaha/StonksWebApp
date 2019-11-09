@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Stonks.Controllers;
 
 namespace Stonks
 {
@@ -13,6 +14,11 @@ namespace Stonks
     {
         public static void Main(string[] args)
         {
+
+            //class s clockem
+            GeneratorController.StartClock();
+
+
             CreateHostBuilder(args).Build().Run();
         }
 
