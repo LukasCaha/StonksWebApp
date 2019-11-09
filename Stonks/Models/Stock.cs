@@ -15,6 +15,7 @@ namespace Stonks.Models
         public string stockCode { get; set; }
         public string description { get; set; }
         public decimal currentValue { get; set; }
+        public double GrowthTrend { get; set; }
         public List<StockValueInTime> history { get; set; }
     }
 
@@ -26,5 +27,15 @@ namespace Stonks.Models
         public int stockId { get; set; }
         public decimal value { get; set; }
         public int timestamp { get; set; }
+    }
+
+    class StockDependency
+    {
+        public int sourceID { get; set; }
+        public int targetID { get; set; }
+        public double multiplier { get; set; }
+
+
+
     }
 }
