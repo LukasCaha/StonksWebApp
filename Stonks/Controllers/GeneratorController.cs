@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Stonks.Models;
 using Stonks.Plugins.Database;
 using Stonks.Plugins.Generator;
@@ -24,15 +25,21 @@ namespace Stonks.Controllers
         public void Clock()
         {
             Generate(new List<StockValueInTime>(LastIteration));
-            AddValueAndTimestampToDatabase();
+            //AddValueAndTimestampToDatabase();
         }
 
-        void AddValueAndTimestampToDatabase()
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task AddValueAndTimestampToDatabase(List<StockValueInTime> lastIteration)
         {
-            /*Time portfolio = new Portfolio(user.id, Settings.startingCash);
-            _context.Add(portfolio);
-            await _context.SaveChangesAsync();*/
+            foreach(StockValueInTime changedStock in lastIteration)
+            {
+                changedStock.timestamp = 1; //TODO pocitadlo tahu
+                _context.Add(changedStock);
+                await _context.SaveChangesAsync();
+            }
         }
+
 
         public void Generate(List<StockValueInTime> lastIteration)
         {
@@ -45,7 +52,7 @@ namespace Stonks.Controllers
                 {
                     iteratedStock = Generator.RandomlyModify(iteratedStock);
                 }
-               LastIteration.Add(iteratedStock);
+                LastIteration.Add(iteratedStock);
             }
         }
 
@@ -63,7 +70,7 @@ namespace Stonks.Controllers
 
 
         // both 'last' and 'dependencies' are expected to be (ascending) ordered by id 
-        static Dictionary<int,double> PropagateDependencies(List<Stock> last, List<StockDependency> dependencies)
+        static Dictionary<int, double> PropagateDependencies(List<Stock> last, List<StockDependency> dependencies)
         {
             int i = 0;
             var curr = last[i];
@@ -76,7 +83,7 @@ namespace Stonks.Controllers
                     {
                         var tmp = curr;
                         curr = last[++i];
-                        if (tmp.id > curr.id) 
+                        if (tmp.id > curr.id)
                             throw new Exception("stock-list is not ordered!");
                     }
                     else break;
