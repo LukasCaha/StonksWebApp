@@ -23,7 +23,8 @@ namespace Stonks.Controllers
 
         public void Clock()
         {
-            //Generate(LastIteration);
+            Generate(new List<StockValueInTime>(LastIteration));
+            AddValueAndTimestampToDatabase();
         }
 
         void AddValueAndTimestampToDatabase()
