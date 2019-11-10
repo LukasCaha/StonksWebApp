@@ -30,7 +30,7 @@ namespace Stonks
             services.AddDbContext<Database>(options =>
                     options.UseSqlServer(Configuration.GetConnectionString("Database")));
 
-
+            mvcoptions
             services.AddControllersWithViews();
         }
 
@@ -50,9 +50,11 @@ namespace Stonks
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 
+            
             app.UseRouting();
 
             app.UseAuthorization();
+
 
             app.UseEndpoints(endpoints =>
             {

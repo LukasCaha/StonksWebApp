@@ -26,7 +26,7 @@ namespace Stonks.Models
         [ForeignKey("Stock")]
         public int stockId { get; set; }
         public decimal value { get; set; }
-        public int timestamp { get; set; }
+        public long timestamp { get; set; }
     }
 
     class StockDependency

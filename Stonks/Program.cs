@@ -16,8 +16,6 @@ namespace Stonks
         {
 
             //class s clockem
-            GeneratorController.StartClock();
-
 
             CreateHostBuilder(args).Build().Run();
         }

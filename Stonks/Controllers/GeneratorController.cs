@@ -1,74 +1,159 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Stonks.Models;
+using Stonks.Models.Persons;
 using Stonks.Plugins.Database;
 using Stonks.Plugins.Generator;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace Stonks.Controllers
 {
+    [Route("[controller]/[action]")]
     public class GeneratorController : Controller
     {
         private readonly Database _context;
+        private readonly object _lock = new object();
+
+        public class Request
+        {
+
+        } 
+
+
+
+        private long Ticks { get; set; } = 0;
+
+        List<Stock> LastIteration { get; set; }
+        List<StockDependency> Dependencies { get; set; }
+        int IterationsPerTicks { get; set; }
+        //List<Stock>  { get; set; }
+
+        Queue<Request> pendingRequests = new Queue<Request>();
+
 
         public GeneratorController(Database context)
         {
             _context = context;
 
-            Generate(LastIteration);
+            LastIteration = context.Stock.ToList();
+            Dependencies = new List<StockDependency>();
+            timer.Elapsed +=  async (a,e) => await OneTick();
+
         }
 
-        static List<Stock> LastIteration { get; set; }
-        static int numberOfIteretions { get; set; }
+        Timer timer { get; } = new Timer(1000){Enabled  = false };
 
-
-        async Task AddValueAndTimestampToDatabase(List<StockValueInTime> timed)
+        async Task OneTick()
         {
-            foreach(StockValueInTime changedStock in timed)
-            {
-                changedStock.timestamp = 1; //TODO pocitadlo tahu
-                _context.Add(changedStock);
-            }
+            var next = Generate(LastIteration);
+            await _context.AddRangeAsync(next);
             await _context.SaveChangesAsync();
+            LastIteration = next;
+
+        }
+
+        // POST: Generator/BuyShares
+        [HttpPost("{userID}/{stockID}/{amount}/")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BuyShares(int userID, int stockID, int amount)
+        {
+            // TODO: delay this operation
+
+            //pendingRequests.Enqueue()
+            var user = _context.Users.Find(userID);
+            var stock = _context.Stock.Find(stockID);
+            
+            if(amount > 0 && user.userPortfolio.cash >= stock.currentValue * amount)
+            {
+                var portfolio = user.userPortfolio;
+                user.userPortfolio.cash -= stock.currentValue * amount;
+
+                if (user.userPortfolio.listOfShares.Any(x => x.id == stockID))
+                    user.userPortfolio.listOfShares.Find(x => x.id == stockID).amount += amount;
+                else
+                    user.userPortfolio.listOfShares.Add(new Share()
+                    {
+                        stockId = stockID,
+                        amount = amount,
+                        portfolioId = user.userPortfolio.id
+                    });
+
+                await _context.SaveChangesAsync();
+
+                return Ok();
+            }
+            return BadRequest();
+
+        }
+        // POST: Generator/BuyShares
+        [HttpPost("{userID}/{stockID}/{amount}/")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SellShares(int userID, int stockID, int amount)
+        {
+            // TODO: delay this operation
+
+            //pendingRequests.Enqueue()
+            var user = _context.Users.Find(userID);
+            var stock = _context.Stock.Find(stockID);
+
+            if (amount > 0 && user.userPortfolio.listOfShares.Find(x => x.id == stockID).amount >= amount)
+            {
+                var portfolio = user.userPortfolio;
+                user.userPortfolio.cash += stock.currentValue * amount;
+
+                if (user.userPortfolio.listOfShares.Any(x => x.id == stockID))
+                    user.userPortfolio.listOfShares.Find(x => x.id == stockID).amount += amount;
+                else
+                    user.userPortfolio.listOfShares.Add(new Share()
+                    {
+                        stockId = stockID,
+                        amount = amount,
+                        portfolioId = user.userPortfolio.id
+                    });
+
+                await _context.SaveChangesAsync();
+
+                return Ok();
+            }
+            return BadRequest();
+
         }
 
 
-
-        public List<Stock> Generate(List<Stock> lastIteration)
+        List<Stock> Generate(List<Stock> lastIteration)
         {
+            var deps = PropagateDependencies(lastIteration, Dependencies);
             var buffer = new List<Stock>();
             foreach (var stock in lastIteration)
             {
                 var tmp = stock;
-                for (int i = 0; i < numberOfIteretions; i++)
+                for (int i = 0; i < IterationsPerTicks; i++)
                 {
-                    tmp = Generator.RandomlyModify(tmp);
+                    tmp = Generator.RandomlyModify(tmp, deps[tmp.id]);
                 }
                buffer.Add(tmp);
             }
             return buffer;
         }
 
-        public async Task GetInitialData()
-        {
-            LastIteration = await _context.Stock.ToListAsync();
-        }
 
-        public StockValueInTime StockToTimeStock(Stock item)
+        StockValueInTime StockToTimeStock(Stock item)
         {
             return new StockValueInTime()
             {
                 stockId = item.id,
-                timestamp = 10,//TODO
+                timestamp = Ticks,
                 value = item.currentValue
             };
         }
 
         // both 'last' and 'dependencies' are expected to be (ascending)ordered by id 
-        static Dictionary<int,double> PropagateDependencies(List<Stock> last, List<StockDependency> dependencies)
+        Dictionary<int,double> PropagateDependencies(List<Stock> last, List<StockDependency> dependencies)
         {
             int i = 0;
             var curr = last[i];
@@ -88,11 +173,11 @@ namespace Stonks.Controllers
                 }
                 if (dict.TryGetValue(dependency.targetID, out var value))
                 {
-                    dict[dependency.targetID] = value + dependency.multiplier * 1.0;//curr.GrowthRate;
+                    dict[dependency.targetID] = value + dependency.multiplier * curr.GrowthTrend;
                 }
-                else         //TODO
+                else         
                 {
-                    dict[dependency.targetID] = dependency.multiplier * 1.0;//curr.GrowthRate;
+                    dict[dependency.targetID] = dependency.multiplier * curr.GrowthTrend;
                 }
             }
             return dict;
